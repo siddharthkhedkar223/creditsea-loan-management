@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Frontend-Backend Connection Test</h1>
+    
+    <button onclick="testHealthCheck()">Test Health Check</button>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testDashboard()">Test Dashboard</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        function addResult(message, isSuccess = true) {
+            const div = document.createElement('div');
+            div.className = `result ${isSuccess ? 'success' : 'error'}`;
+            div.textContent = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function testHealthCheck() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                addResult(`Health Check: ${data.message}`, true);
+            } catch (error) {
+                addResult(`Health Check Failed: ${error.message}`, false);
+            }
+        }
+
+        async function testLogin() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@creditsea.com',
+                        password: 'admin123'
+                    }),
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addResult(`Login Success: Token received for ${data.data.user.email}`, true);
+                    window.testToken = data.data.token;
+                } else {
+                    addResult(`Login Failed: ${data.message}`, false);
+                }
+            } catch (error) {
+                addResult(`Login Error: ${error.message}`, false);
+            }
+        }
+
+        async function testDashboard() {
+            if (!window.testToken) {
+                addResult('Please login first to get token', false);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${window.testToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addResult(`Dashboard Success: Stats retrieved`, true);
+                } else {
+                    addResult(`Dashboard Failed: ${data.message}`, false);
+                }
+            } catch (error) {
+                addResult(`Dashboard Error: ${error.message}`, false);
+            }
+        }
+
+        // Auto-run health check on load
+        window.onload = () => {
+            addResult('Testing frontend-backend connection...', true);
+            testHealthCheck();
+        };
+    </script>
+</body>
+</html>
